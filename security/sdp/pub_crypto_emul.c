@@ -380,13 +380,11 @@ static void req_dump(pub_crypto_request_t *req, const char *msg) {
 
 static void request_send(pub_crypto_control_t *con,
 		pub_crypto_request_t *req) {
-	spin_lock(&con->lock);
 
 	list_add_tail(&req->list, &con->pending_list);
 	req->state = PUB_CRYPTO_REQ_PENDING;
 	req_dump(req, "added");
 
-	spin_unlock(&con->lock);
 }
 
 static void request_wait_answer(pub_crypto_control_t *con,
@@ -421,7 +419,6 @@ static pub_crypto_request_t *request_find(pub_crypto_control_t *con,
 		u32 request_id) {
 	struct list_head *entry;
 
-	spin_lock(&con->lock);
 
 	list_for_each(entry, &con->pending_list) {
 		 pub_crypto_request_t *req;
@@ -429,12 +426,10 @@ static pub_crypto_request_t *request_find(pub_crypto_control_t *con,
 		if (req->id == request_id) {
 			req_dump(req, "found");
 
-			spin_unlock(&con->lock);
 			return req;
 		}
 	}
 
-	spin_unlock(&con->lock);
 
 	PUB_CRYPTO_LOGE("Can't find request %d\n", request_id);
 	return NULL;
@@ -466,14 +461,12 @@ static pub_crypto_request_t *request_alloc(u32 opcode) {
 static void request_free(pub_crypto_control_t *con, pub_crypto_request_t *req) {
 	if(req) {
 		req_dump(req, "freed");
-		spin_lock(&con->lock);
-
+	
 		list_del(&req->list);
 		memset(req, 0, sizeof(pub_crypto_request_t));
 		kmem_cache_free(pub_crypto_req_cachep, req);
 
-		spin_unlock(&con->lock);
-	} else {
+		} else {
 		PUB_CRYPTO_LOGE("req is NULL, skip free\n");
 	}
 }
@@ -483,9 +476,7 @@ void pub_crypto_control_init(pub_crypto_control_t *con) {
 	spin_lock_init(&con->lock);
 	INIT_LIST_HEAD(&con->pending_list);
 	
-	spin_lock(&con->lock);
 	con->reqctr = 0;
-	spin_unlock(&con->lock);
 }
 
 static int __init pub_crypto_mod_init(void) {

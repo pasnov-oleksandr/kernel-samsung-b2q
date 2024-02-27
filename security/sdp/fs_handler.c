@@ -178,6 +178,7 @@ static int __recver(struct sk_buff *skb, struct nlmsghdr *nlh)
         spin_lock(&g_sdp_fs_handler_control.lock);
         req = request_find(&g_sdp_fs_handler_control, result->request_id);
         spin_unlock(&g_sdp_fs_handler_control.lock);
+        spin_unlock(&g_sdp_fs_handler_control.lock);
 
         if(req == NULL) {
             SDP_FS_HANDLER_LOGE("crypto result :: error! can't find request %d\n",
@@ -192,6 +193,7 @@ static int __recver(struct sk_buff *skb, struct nlmsghdr *nlh)
             memset(result, 0, sizeof(result_t));
             request_free(req);
         }
+        spin_unlock(&g_sdp_fs_handler_control.lock);
         break;
     }
     default:
