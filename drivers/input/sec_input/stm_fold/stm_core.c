@@ -13,7 +13,7 @@
 #include "stm_reg.h"
 
 #if IS_ENABLED(CONFIG_INPUT_SEC_SECURE_TOUCH)
-irqreturn_t secure_filter_interrupt(struct stm_ts_data *ts)
+irqreturn_t stm_secure_filter_interrupt(struct stm_ts_data *ts)
 {
 	if (atomic_read(&ts->secure_enabled) == SECURE_TOUCH_ENABLE) {
 		if (atomic_cmpxchg(&ts->secure_pending_irqs, 0, 1) == 0) {
@@ -35,7 +35,7 @@ irqreturn_t secure_filter_interrupt(struct stm_ts_data *ts)
  * @atomic : syncronization for secure_enabled
  * @pm_runtime : set rpm_resume or rpm_ilde
  */
-ssize_t secure_touch_enable_show(struct device *dev,
+ssize_t stm_secure_touch_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct stm_ts_data *ts = dev_get_drvdata(dev);
@@ -43,7 +43,7 @@ ssize_t secure_touch_enable_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d", atomic_read(&ts->secure_enabled));
 }
 
-ssize_t secure_touch_enable_store(struct device *dev,
+ssize_t stm_secure_touch_enable_store(struct device *dev,
 		struct device_attribute *addr, const char *buf, size_t count)
 {
 	struct stm_ts_data *ts = dev_get_drvdata(dev);
@@ -84,7 +84,7 @@ ssize_t secure_touch_enable_store(struct device *dev,
 		disable_irq(ts->client->irq);
 
 		/* Release All Finger */
-		stm_ts_release_all_finger(ts);
+		stm_stm_ts_release_all_finger(ts);
 
 		if (pm_runtime_get_sync(ts->client->adapter->dev.parent) < 0) {
 			enable_irq(ts->client->irq);
@@ -120,7 +120,7 @@ ssize_t secure_touch_enable_store(struct device *dev,
 
 		sec_delay(10);
 
-		stm_ts_irq_thread(ts->client->irq, ts);
+		stm_stm_ts_irq_thread(ts->client->irq, ts);
 		complete(&ts->secure_interrupt);
 		complete_all(&ts->secure_powerdown);
 
@@ -137,7 +137,7 @@ ssize_t secure_touch_enable_store(struct device *dev,
 	return count;
 }
 
-ssize_t secure_touch_show(struct device *dev,
+ssize_t stm_secure_touch_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	struct stm_ts_data *ts = dev_get_drvdata(dev);
@@ -164,13 +164,13 @@ ssize_t secure_touch_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%u", val);
 }
 
-ssize_t secure_ownership_show(struct device *dev,
+ssize_t stm_secure_ownership_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "1");
 }
 
-int secure_touch_init(struct stm_ts_data *ts)
+int stm_secure_touch_init(struct stm_ts_data *ts)
 {
 	input_info(true, &ts->client->dev, "%s\n", __func__);
 
@@ -180,7 +180,7 @@ int secure_touch_init(struct stm_ts_data *ts)
 	return 0;
 }
 
-void secure_touch_stop(struct stm_ts_data *ts, bool stop)
+void stm_secure_touch_stop(struct stm_ts_data *ts, bool stop)
 {
 	if (atomic_read(&ts->secure_enabled)) {
 		atomic_set(&ts->secure_pending_irqs, -1);
@@ -195,9 +195,9 @@ void secure_touch_stop(struct stm_ts_data *ts, bool stop)
 }
 
 static DEVICE_ATTR(secure_touch_enable, (S_IRUGO | S_IWUSR | S_IWGRP),
-		secure_touch_enable_show, secure_touch_enable_store);
-static DEVICE_ATTR(secure_touch, S_IRUGO, secure_touch_show, NULL);
-static DEVICE_ATTR(secure_ownership, S_IRUGO, secure_ownership_show, NULL);
+		stm_secure_touch_enable_show, stm_secure_touch_enable_store);
+static DEVICE_ATTR(secure_touch, S_IRUGO, stm_secure_touch_show, NULL);
+static DEVICE_ATTR(secure_ownership, S_IRUGO, stm_secure_ownership_show, NULL);
 static struct attribute *secure_attr[] = {
 	&dev_attr_secure_touch_enable.attr,
 	&dev_attr_secure_touch.attr,
@@ -227,7 +227,7 @@ int stm_stui_tsp_enter(void)
 #endif
 
 	disable_irq(ts->irq);
-	stm_ts_release_all_finger(ts);
+	stm_stm_ts_release_all_finger(ts);
 
 	ret = stui_i2c_lock(ts->client->adapter);
 	if (ret) {
@@ -534,16 +534,16 @@ err:
 	return -EIO;
 }
 
-void stm_ts_reinit(void *data) 
+void stm_stm_ts_reinit(void *data) 
 {
 	struct stm_ts_data *ts = (struct stm_ts_data *)data;
 	int ret = 0;
 	int retry = 3;
 
 	do {
-		ret = stm_ts_systemreset(ts, 0);
+		ret = stm_stm_ts_systemreset(ts, 0);
 		if (ret < 0)
-			stm_ts_reset(ts, 20);
+			stm_stm_ts_reset(ts, 20);
 		else
 			break;
 	} while (--retry);
@@ -561,8 +561,8 @@ void stm_ts_reinit(void *data)
 	ts->plat_data->touch_pre_noise_status = 0;
 	ts->plat_data->wet_mode = 0;
 
-	ts->stm_ts_command(ts, STM_TS_CMD_CLEAR_ALL_EVENT, true);
-	stm_ts_release_all_finger(ts);
+	ts->stm_stm_ts_command(ts, STM_TS_CMD_CLEAR_ALL_EVENT, true);
+	stm_stm_ts_release_all_finger(ts);
 
 	if (ts->plat_data->wirelesscharger_mode != TYPE_WIRELESS_CHARGER_NONE)
 		stm_ts_set_wirelesscharger_mode(ts);
@@ -572,43 +572,43 @@ void stm_ts_reinit(void *data)
 
 	stm_ts_set_cover_type(ts, ts->plat_data->touch_functions & STM_TS_TOUCHTYPE_BIT_COVER);
 
-	stm_ts_set_custom_library(ts);
-	stm_ts_set_press_property(ts);
-	stm_ts_set_fod_finger_merge(ts);
+	stm_stm_ts_set_custom_library(ts);
+	stm_stm_ts_set_press_property(ts);
+	stm_stm_ts_set_fod_finger_merge(ts);
 
 	if (ts->plat_data->support_fod && ts->plat_data->fod_data.set_val)
-		stm_ts_set_fod_rect(ts);
+		stm_stm_ts_set_fod_rect(ts);
 
 	/* Power mode */
 	if (ts->plat_data->power_state == SEC_INPUT_STATE_LPM) {
-		stm_ts_set_opmode(ts, STM_TS_OPMODE_LOWPOWER);
+		stm_stm_ts_set_opmode(ts, STM_TS_OPMODE_LOWPOWER);
 		sec_delay(50);
 		if (ts->plat_data->lowpower_mode & SEC_TS_MODE_SPONGE_AOD)
-			stm_ts_set_aod_rect(ts);
+			stm_stm_ts_set_aod_rect(ts);
 	} else {
 		sec_input_set_grip_type(&ts->client->dev, GRIP_ALL_DATA);
 
-		stm_ts_set_external_noise_mode(ts, EXT_NOISE_MODE_MAX);
+		stm_stm_ts_set_external_noise_mode(ts, EXT_NOISE_MODE_MAX);
 
 		if (ts->plat_data->touchable_area) {
-			ret = stm_ts_set_touchable_area(ts);
+			ret = stm_stm_ts_set_touchable_area(ts);
 			if (ret < 0)
 				goto out;
 		}
 	}
 
 	if (ts->plat_data->ed_enable)
-		stm_ts_ear_detect_enable(ts, ts->plat_data->ed_enable);
+		stm_stm_ts_ear_detect_enable(ts, ts->plat_data->ed_enable);
 	if (ts->plat_data->pocket_mode)
-		stm_ts_pocket_mode_enable(ts, ts->plat_data->pocket_mode);
+		stm_stm_ts_pocket_mode_enable(ts, ts->plat_data->pocket_mode);
 	if (ts->sip_mode)
-		stm_ts_sip_mode_enable(ts);
+		stm_stm_ts_sip_mode_enable(ts);
 	if (ts->note_mode)
-		stm_ts_note_mode_enable(ts);
+		stm_stm_ts_note_mode_enable(ts);
 	if (ts->game_mode)
-		stm_ts_game_mode_enable(ts);
+		stm_stm_ts_game_mode_enable(ts);
 out:
-	stm_ts_set_scanmode(ts, ts->scan_mode);
+	stm_stm_ts_set_scanmode(ts, ts->scan_mode);
 }
 /*
  * don't need it in interrupt handler in reality, but, need it in vendor IC for requesting vendor IC.
@@ -790,7 +790,7 @@ static void stm_ts_status_event(struct stm_ts_data *ts, u8 *event_buff)
 	if (p_event_status->stype == STM_TS_EVENT_STATUSTYPE_ERROR) {
 		if (p_event_status->status_id == STM_TS_ERR_EVENT_QUEUE_FULL) {
 			input_err(true, &ts->client->dev, "%s: IC Event Queue is full\n", __func__);
-			stm_ts_release_all_finger(ts);
+			stm_stm_ts_release_all_finger(ts);
 		} else if (p_event_status->status_id == STM_TS_ERR_EVENT_ESD) {
 			input_err(true, &ts->client->dev, "%s: ESD detected\n", __func__);
 			if (!ts->reset_is_on_going)
@@ -870,7 +870,7 @@ static int stm_ts_get_event(struct stm_ts_data *ts, u8 *data, int *remain_event_
 		if (ret < 0)
 			input_err(true, &ts->client->dev, "%s: i2c write clear event failed\n", __func__);
 
-		stm_ts_release_all_finger(ts);
+		stm_stm_ts_release_all_finger(ts);
 
 		return SEC_ERROR;
 	}
@@ -901,7 +901,7 @@ static int stm_ts_get_event(struct stm_ts_data *ts, u8 *data, int *remain_event_
 	return SEC_SUCCESS;
 }
 
-irqreturn_t stm_ts_irq_thread(int irq, void *ptr)
+irqreturn_t stm_stm_ts_irq_thread(int irq, void *ptr)
 {
 	struct stm_ts_data *ts = (struct stm_ts_data *)ptr;
 	int ret;
@@ -913,7 +913,7 @@ irqreturn_t stm_ts_irq_thread(int irq, void *ptr)
 	ret = event_id = curr_pos = remain_event_count = 0;
 
 #if IS_ENABLED(CONFIG_INPUT_SEC_SECURE_TOUCH)
-	if (secure_filter_interrupt(ts) == IRQ_HANDLED) {
+	if (stm_secure_filter_interrupt(ts) == IRQ_HANDLED) {
 		wait_for_completion_interruptible_timeout(&ts->secure_interrupt,
 				msecs_to_jiffies(5 * MSEC_PER_SEC));
 
@@ -977,7 +977,7 @@ irqreturn_t stm_ts_irq_thread(int irq, void *ptr)
 	return IRQ_HANDLED;
 }
 
-int stm_ts_input_open(struct input_dev *dev)
+int stm_stm_ts_input_open(struct input_dev *dev)
 {
 	struct stm_ts_data *ts = input_get_drvdata(dev);
 	struct irq_desc *desc = irq_to_desc(ts->irq);
@@ -992,7 +992,7 @@ int stm_ts_input_open(struct input_dev *dev)
 	ts->plat_data->prox_power_off = 0;
 
 #if IS_ENABLED(CONFIG_INPUT_SEC_SECURE_TOUCH)
-	secure_touch_stop(ts, 0);
+	stm_secure_touch_stop(ts, 0);
 #endif
 
 	cancel_delayed_work_sync(&ts->switching_work);
@@ -1013,7 +1013,7 @@ int stm_ts_input_open(struct input_dev *dev)
 	mutex_unlock(&ts->switching_mutex);
 
 	if (ts->fix_active_mode) 
-		stm_ts_fix_active_mode(ts, true);
+		stm_stm_ts_fix_active_mode(ts, true);
 
 	sec_input_set_temperature(&ts->client->dev, SEC_INPUT_SET_TEMPERATURE_FORCE);
 
@@ -1035,7 +1035,7 @@ int stm_ts_input_open(struct input_dev *dev)
 	return 0;
 }
 
-void stm_ts_input_close(struct input_dev *dev)
+void stm_stm_ts_input_close(struct input_dev *dev)
 {
 	struct stm_ts_data *ts = input_get_drvdata(dev);
 
@@ -1057,7 +1057,7 @@ void stm_ts_input_close(struct input_dev *dev)
 	cancel_delayed_work(&ts->work_print_info);
 	sec_input_print_info(&ts->client->dev, ts->tdata);
 #if IS_ENABLED(CONFIG_INPUT_SEC_SECURE_TOUCH)
-	secure_touch_stop(ts, 1);
+	stm_secure_touch_stop(ts, 1);
 #endif
 #if IS_ENABLED(CONFIG_SAMSUNG_TUI)
 	stui_cancel_session();
@@ -1089,14 +1089,14 @@ void stm_ts_input_close(struct input_dev *dev)
 	mutex_unlock(&ts->modechange);
 }
 
-int stm_ts_stop_device(void *data)
+int stm_stm_ts_stop_device(void *data)
 {
 	struct stm_ts_data *ts = (struct stm_ts_data *)data;
 
 	input_info(true, &ts->client->dev, "%s\n", __func__);
 
 	if (ts->sec.fac_dev)
-		get_lp_dump(ts->sec.fac_dev, NULL, NULL);
+		stm_get_lp_dump(ts->sec.fac_dev, NULL, NULL);
 
 	mutex_lock(&ts->device_mutex);
 
@@ -1109,7 +1109,7 @@ int stm_ts_stop_device(void *data)
 
 	ts->plat_data->power_state = SEC_INPUT_STATE_POWER_OFF;
 
-	stm_ts_locked_release_all_finger(ts);
+	stm_stm_ts_locked_release_all_finger(ts);
 
 	ts->plat_data->power(&ts->client->dev, false);
 	ts->plat_data->pinctrl_configure(&ts->client->dev, false);
@@ -1119,7 +1119,7 @@ out:
 	return 0;
 }
 
-int stm_ts_start_device(void *data)
+int stm_stm_ts_start_device(void *data)
 {
 	struct stm_ts_data *ts = (struct stm_ts_data *)data;
 	int ret = -1;
@@ -1136,7 +1136,7 @@ int stm_ts_start_device(void *data)
 		goto out;
 	}
 
-	stm_ts_locked_release_all_finger(ts);
+	stm_stm_ts_locked_release_all_finger(ts);
 
 	ts->plat_data->power(&ts->client->dev, true);
 
@@ -1145,14 +1145,14 @@ int stm_ts_start_device(void *data)
 	ts->plat_data->power_state = SEC_INPUT_STATE_POWER_ON;
 	ts->plat_data->touch_noise_status = 0;
 
-	ret = stm_ts_wait_for_ready(ts);
+	ret = stm_stm_ts_wait_for_ready(ts);
 	if (ret < 0) {
 		input_err(true, &ts->client->dev,
 				"%s: Failed to wait_for_ready\n", __func__);
 		goto err;
 	}
 
-	ret = stm_ts_read_chip_id(ts);
+	ret = stm_stm_ts_read_chip_id(ts);
 	if (ret < 0)
 		input_err(true, &ts->client->dev, "%s: Failed to read chip id\n", __func__);
 
@@ -1192,7 +1192,7 @@ static int stm_ts_hw_init(struct i2c_client *client)
 	}
 	
 	do {
-		ret = stm_ts_fw_corruption_check(ts);
+		ret = stm_stm_ts_fw_corruption_check(ts);
 		if (ret == -STM_TS_ERROR_FW_CORRUPTION) {
 			ts->plat_data->hw_param.checksum_result = 1;
 			break;
@@ -1202,23 +1202,23 @@ static int stm_ts_hw_init(struct i2c_client *client)
 			} else if (ts->plat_data->hw_param.checksum_result) {
 				break;
 			} else if (ret == -STM_TS_ERROR_TIMEOUT_ZERO) {
-				ret = stm_ts_read_chip_id_hw(ts);
+				ret = stm_stm_ts_read_chip_id_hw(ts);
 				if (ret == STM_TS_NOT_ERROR) {
 					ts->plat_data->hw_param.checksum_result = 1;
 					input_err(true, &ts->client->dev, "%s: config corruption\n", __func__);
 					break;
 				}
 			}
-			stm_ts_systemreset(ts, 20);
+			stm_stm_ts_systemreset(ts, 20);
 		} else {
 			break;
 		}
 	} while (--retry);
 
-	stm_ts_get_version_info(ts);
+	stm_stm_ts_get_version_info(ts);
 
 	if (ret == -STM_TS_ERROR_BROKEN_OSC_TRIM) {
-		ret = stm_ts_osc_trim_recovery(ts);
+		ret = stm_stm_ts_osc_trim_recovery(ts);
 		if (ret < 0)
 			input_err(true, &ts->client->dev, "%s: Failed to recover osc trim\n", __func__);
 	}
@@ -1229,11 +1229,11 @@ static int stm_ts_hw_init(struct i2c_client *client)
 		ts->fw_main_version_of_ic = 0;
 	}
 
-	ret = stm_ts_read_chip_id(ts);
+	ret = stm_stm_ts_read_chip_id(ts);
 	if (ret < 0) {
-		stm_ts_systemreset(ts, 500);	/* Delay to discharge the IC from ESD or On-state.*/
+		stm_stm_ts_systemreset(ts, 500);	/* Delay to discharge the IC from ESD or On-state.*/
 		input_err(true, &ts->client->dev, "%s: Reset caused by chip id error\n", __func__);
-		stm_ts_read_chip_id(ts);
+		stm_stm_ts_read_chip_id(ts);
 
 		if ((ts->chip_id == 0xffffff) && (strcmp(ts->plat_data->firmware_name, "fts2ca78y_b2.bin") == 0)) {
 			input_info(true, &ts->client->dev, "%s: STM_TS2c panel (force chip_id)\n", __func__);
@@ -1248,7 +1248,7 @@ static int stm_ts_hw_init(struct i2c_client *client)
 		return -STM_TS_ERROR_FW_UPDATE_FAIL;
 	}
 
-	ret = stm_ts_get_channel_info(ts);
+	ret = stm_stm_ts_get_channel_info(ts);
 	if (ret < 0) {
 		input_err(true, &ts->client->dev, "%s: read failed rc = %d\n", __func__, ret);
 		return ret;
@@ -1281,13 +1281,13 @@ static int stm_ts_hw_init(struct i2c_client *client)
 #endif
 
 	ts->plat_data->touch_functions = STM_TS_TOUCHTYPE_DEFAULT_ENABLE;
-	stm_ts_set_touch_function(ts);
+	stm_stm_ts_set_touch_function(ts);
 	sec_delay(10);
 
-	stm_ts_command(ts, STM_TS_CMD_FORCE_CALIBRATION, true);
-	stm_ts_command(ts, STM_TS_CMD_CLEAR_ALL_EVENT, true);
+	stm_stm_ts_command(ts, STM_TS_CMD_FORCE_CALIBRATION, true);
+	stm_stm_ts_command(ts, STM_TS_CMD_CLEAR_ALL_EVENT, true);
 	ts->scan_mode = STM_TS_SCAN_MODE_DEFAULT;
-	stm_ts_set_scanmode(ts, ts->scan_mode);
+	stm_stm_ts_set_scanmode(ts, ts->scan_mode);
 
 	ts->flip_status = -1;
 
@@ -1298,7 +1298,7 @@ static int stm_ts_hw_init(struct i2c_client *client)
 
 	input_info(true, &ts->client->dev, "%s: Initialized\n", __func__);
 
-	stm_ts_init_proc(ts);
+	stm_stm_ts_init_proc(ts);
 
 	return ret;
 }
@@ -1362,19 +1362,19 @@ static int stm_ts_init(struct i2c_client *client)
 	ts->irq = client->irq;
 	ts->stm_ts_i2c_read = stm_ts_i2c_read;
 	ts->stm_ts_i2c_write = stm_ts_i2c_write;
-	ts->stm_ts_read_sponge = stm_ts_read_from_sponge;
-	ts->stm_ts_write_sponge = stm_ts_write_to_sponge;
-	ts->stm_ts_systemreset = stm_ts_systemreset;
-	ts->stm_ts_command = stm_ts_command;
+	ts->stm_ts_read_sponge = stm_stm_ts_read_from_sponge;
+	ts->stm_ts_write_sponge = stm_stm_ts_write_to_sponge;
+	ts->stm_stm_ts_systemreset = stm_stm_ts_systemreset;
+	ts->stm_stm_ts_command = stm_stm_ts_command;
 
 	ts->plat_data->pinctrl_configure = sec_input_pinctrl_configure;
 	ts->plat_data->power = sec_input_power;
-	ts->plat_data->start_device = stm_ts_start_device;
-	ts->plat_data->stop_device = stm_ts_stop_device;
-	ts->plat_data->init = stm_ts_reinit;
-	ts->plat_data->lpmode = stm_ts_set_lowpowermode;
-	ts->plat_data->set_grip_data = stm_set_grip_data_to_ic;
-	ts->plat_data->set_temperature = stm_ts_set_temperature;
+	ts->plat_data->start_device = stm_stm_ts_start_device;
+	ts->plat_data->stop_device = stm_stm_ts_stop_device;
+	ts->plat_data->init = stm_stm_ts_reinit;
+	ts->plat_data->lpmode = stm_stm_ts_set_lowpowermode;
+	ts->plat_data->set_grip_data = stm_stm_set_grip_data_to_ic;
+	ts->plat_data->set_temperature = stm_stm_ts_set_temperature;
 
 	ptsp = &client->dev;
 
@@ -1394,15 +1394,15 @@ static int stm_ts_init(struct i2c_client *client)
 	ts->tdata->client = ts->client;
 	ts->tdata->tclm_read = sec_tclm_data_read;
 	ts->tdata->tclm_write = sec_tclm_data_write;
-	ts->tdata->tclm_execute_force_calibration = stm_ts_tclm_execute_force_calibration;
+	ts->tdata->tclm_execute_force_calibration = stm_stm_ts_tclm_execute_force_calibration;
 	ts->tdata->tclm_parse_dt = sec_tclm_parse_dt;
 #endif
 
-	INIT_DELAYED_WORK(&ts->reset_work, stm_ts_reset_work);
-	INIT_DELAYED_WORK(&ts->work_read_info, stm_ts_read_info_work);
-	INIT_DELAYED_WORK(&ts->work_print_info, stm_ts_print_info_work);
-	INIT_DELAYED_WORK(&ts->work_read_functions, stm_ts_get_touch_function);
-	INIT_DELAYED_WORK(&ts->switching_work, stm_switching_work);
+	INIT_DELAYED_WORK(&ts->reset_work, stm_stm_ts_reset_work);
+	INIT_DELAYED_WORK(&ts->work_read_info, stm_stm_ts_read_info_work);
+	INIT_DELAYED_WORK(&ts->work_print_info, stm_stm_ts_print_info_work);
+	INIT_DELAYED_WORK(&ts->work_read_functions, stm_stm_ts_get_touch_function);
+	INIT_DELAYED_WORK(&ts->switching_work, stm_stm_switching_work);
 	mutex_init(&ts->device_mutex);
 	mutex_init(&ts->i2c_mutex);
 	mutex_init(&ts->eventlock);
@@ -1426,28 +1426,28 @@ static int stm_ts_init(struct i2c_client *client)
 		goto err_register_input_device;
 	}
 
-	ts->plat_data->input_dev->open = stm_ts_input_open;
-	ts->plat_data->input_dev->close = stm_ts_input_close;
+	ts->plat_data->input_dev->open = stm_stm_ts_input_open;
+	ts->plat_data->input_dev->close = stm_stm_ts_input_close;
 
-	ret = stm_ts_fn_init(ts);
+	ret = stm_stm_ts_fn_init(ts);
 	if (ret) {
 		input_err(true, &ts->client->dev, "%s: fail to init fn\n", __func__);
 		goto err_fn_init;
 	}
 
 #if IS_ENABLED(CONFIG_INPUT_SEC_NOTIFIER)
-	sec_input_register_notify(&ts->stm_input_nb, stm_notifier_call, 1);
+	sec_input_register_notify(&ts->stm_input_nb, stm_stm_notifier_call, 1);
 #endif
 
 #if IS_ENABLED(CONFIG_HALL_NOTIFIER)
 	ts->hall_ic_nb.priority = 1;
-	ts->hall_ic_nb.notifier_call = stm_hall_ic_notify;
+	ts->hall_ic_nb.notifier_call = stm_stm_hall_ic_notify;
 	hall_notifier_register(&ts->hall_ic_nb);
 	input_info(true, &ts->client->dev, "%s: hall ic register\n", __func__);
 #endif
 #if IS_ENABLED(CONFIG_SUPPORT_SENSOR_FOLD)
 	ts->hall_ic_nb_ssh.priority = 1;
-	ts->hall_ic_nb_ssh.notifier_call = stm_hall_ic_ssh_notify;
+	ts->hall_ic_nb_ssh.notifier_call = stm_stm_hall_ic_ssh_notify;
 	if (ts->plat_data->support_sensor_hall) {
 		sensorfold_notifier_register(&ts->hall_ic_nb_ssh);
 		input_info(true, &ts->client->dev, "%s: hall ic(ssh) register\n", __func__);
@@ -1455,8 +1455,8 @@ static int stm_ts_init(struct i2c_client *client)
 #endif
 
 #if IS_ENABLED(CONFIG_TOUCHSCREEN_DUMP_MODE)
-	dump_callbacks.inform_dump = stm_ts_dump_tsp_log;
-	INIT_DELAYED_WORK(&ts->check_rawdata, stm_ts_check_rawdata);
+	dump_callbacks.inform_dump = stm_stm_ts_dump_tsp_log;
+	INIT_DELAYED_WORK(&ts->check_rawdata, stm_stm_ts_check_rawdata);
 #endif
 	input_info(true, &client->dev, "%s: init resource\n", __func__);
 
@@ -1476,7 +1476,7 @@ error_allocate_pdata:
 	return ret;
 }
 
-void stm_ts_release(struct i2c_client *client)
+void stm_stm_ts_release(struct i2c_client *client)
 {
 	struct stm_ts_data *ts = i2c_get_clientdata(client);
 
@@ -1503,7 +1503,7 @@ void stm_ts_release(struct i2c_client *client)
 	cancel_delayed_work_sync(&ts->check_rawdata);
 	dump_callbacks.inform_dump = NULL;
 #endif
-	stm_ts_fn_remove(ts);
+	stm_stm_ts_fn_remove(ts);
 
 	device_init_wakeup(&client->dev, false);
 	wakeup_source_unregister(ts->plat_data->sec_ws);
@@ -1541,19 +1541,19 @@ int stm_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	ret = stm_ts_hw_init(client);
 	if (ret < 0) {
 		input_err(true, &ts->client->dev, "%s: fail to init hw\n", __func__);
-		stm_ts_release(client);
+		stm_stm_ts_release(client);
 		return ret;
 	}
 
-	stm_ts_get_custom_library(ts);
-	stm_ts_set_custom_library(ts);
+	stm_stm_ts_get_custom_library(ts);
+	stm_stm_ts_set_custom_library(ts);
 
 	input_info(true, &ts->client->dev, "%s: request_irq = %d\n", __func__, client->irq);
-	ret = request_threaded_irq(client->irq, NULL, stm_ts_irq_thread,
+	ret = request_threaded_irq(client->irq, NULL, stm_stm_ts_irq_thread,
 			IRQF_TRIGGER_LOW | IRQF_ONESHOT, STM_TS_I2C_NAME, ts);
 	if (ret < 0) {
 		input_err(true, &ts->client->dev, "%s: Unable to request threaded irq\n", __func__);
-		stm_ts_release(client);
+		stm_stm_ts_release(client);
 		return ret;
 	}
 
@@ -1564,7 +1564,7 @@ int stm_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	if (sysfs_create_group(&ts->plat_data->input_dev->dev.kobj, &secure_attr_group) < 0)
 		input_err(true, &ts->client->dev, "%s: do not make secure group\n", __func__);
 	else
-		secure_touch_init(ts);
+		stm_secure_touch_init(ts);
 
 	sec_secure_touch_register(ts, ts->plat_data->ss_touch_num, &ts->plat_data->input_dev->dev.kobj);
 #endif
@@ -1594,7 +1594,7 @@ int stm_ts_remove(struct i2c_client *client)
 	disable_irq_nosync(ts->client->irq);
 	free_irq(ts->client->irq, ts);
 
-	stm_ts_release(client);
+	stm_stm_ts_release(client);
 
 	return 0;
 }
