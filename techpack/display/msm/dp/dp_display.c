@@ -299,7 +299,7 @@ bool secdp_check_if_lpm_mode(void)
 	return retval;
 }
 
-__visible_for_testing void secdp_send_poor_connection_event(bool edid_fail)
+static void secdp_send_poor_connection_event(bool edid_fail)
 {
 	struct dp_display_private *dp = g_secdp_priv;
 
@@ -460,7 +460,7 @@ int secdp_read_branch_revision(struct dp_display_private *dp)
 		goto end;
 	}
 
-	DP_INFO("branch revision: HW:0x%X, SW:0x%X,0x%X\n",
+	DP_INFO("branch revision: HW(0x%X), SW(0x%X, 0x%X)\n",
 		fw_ver[0], fw_ver[1], fw_ver[2]);
 
 #if defined(CONFIG_SEC_DISPLAYPORT_BIGDATA)
@@ -1921,7 +1921,7 @@ static int dp_display_host_init(struct dp_display_private *dp)
 	dp_display_state_add(DP_STATE_INITIALIZED);
 
 	/* log this as it results from user action of cable connection */
-	DP_INFO("host_init[OK]\n");
+	DP_INFO("[OK]\n");
 	return rc;
 
 error_ctrl:
@@ -1973,7 +1973,7 @@ static int dp_display_host_ready(struct dp_display_private *dp)
 
 	dp_display_state_add(DP_STATE_READY);
 	/* log this as it results from user action of cable connection */
-	DP_INFO("host_ready[OK]\n");
+	DP_INFO("[OK]\n");
 	return rc;
 }
 
@@ -1994,7 +1994,7 @@ static void dp_display_host_unready(struct dp_display_private *dp)
 	dp_display_state_remove(DP_STATE_READY);
 	dp->aux->deinit(dp->aux);
 	/* log this as it results from user action of cable disconnection */
-	DP_INFO("host_unready[OK]\n");
+	DP_INFO("[OK]\n");
 }
 
 static void dp_display_host_deinit(struct dp_display_private *dp)
@@ -2022,7 +2022,7 @@ static void dp_display_host_deinit(struct dp_display_private *dp)
 	dp_display_state_remove(DP_STATE_INITIALIZED);
 
 	/* log this as it results from user action of cable dis-connection */
-	DP_INFO("host_deinit[OK]\n");
+	DP_INFO("[OK]\n");
 }
 
 static int dp_display_process_hpd_high(struct dp_display_private *dp)
@@ -2132,7 +2132,7 @@ static int dp_display_process_hpd_high(struct dp_display_private *dp)
 		goto notify;
 	}
 	dp->sec.dex.prev = secdp_check_dex_mode();
-	DP_INFO("dex.ui:%d,dex.curr:%d\n",
+	DP_INFO("dex.setting_ui: %d, dex.curr: %d\n",
 		dp->sec.dex.setting_ui, dp->sec.dex.curr);
 	secdp_read_branch_revision(dp);
 	dp->sec.hmd.exist = secdp_check_hmd_dev(NULL);
@@ -3187,7 +3187,7 @@ void secdp_self_test_hdcp_off(void)
 }
 #endif
 
-__visible_for_testing enum mon_aspect_ratio_t secdp_get_aspect_ratio(struct drm_display_mode *mode)
+static enum mon_aspect_ratio_t secdp_get_aspect_ratio(struct drm_display_mode *mode)
 {
 	enum mon_aspect_ratio_t aspect_ratio = MON_RATIO_NA;
 	int hdisplay = mode->hdisplay;
@@ -3255,7 +3255,7 @@ static bool secdp_update_max_timing(struct secdp_display_timing *target,
 		return true;
 	}
 
-	mode_total = (u64)mode->hdisplay * (u64)mode->vdisplay;
+	mode_total = mode->hdisplay * mode->vdisplay;
 	if (mode_total < target->total)
 		return false;
 
@@ -3320,6 +3320,7 @@ static void secdp_pdic_connect_init(struct dp_display_private *dp,
 
 	secdp_clear_branch_info(dp);
 	secdp_clear_link_status_cnt(dp->link);
+	secdp_logger_set_max_count(300);
 
 #if defined(CONFIG_SEC_DISPLAYPORT_BIGDATA)
 	if (connect) {
@@ -3398,6 +3399,7 @@ static void secdp_pdic_handle_hpd(struct dp_display_private *dp,
 	struct secdp_misc *sec = &dp->sec;
 
 	if (noti->sub1 == PDIC_NOTIFY_HIGH) {
+		secdp_logger_set_max_count(300);
 		atomic_set(&sec->hpd.val, 1);
 		dp->hpd->hpd_high = true;
 	} else/* if (noti->sub1 == PDIC_NOTIFY_LOW)*/ {
@@ -3425,8 +3427,7 @@ static int secdp_pdic_noti_cb(struct notifier_block *nb, unsigned long action,
 		break;
 
 	case PDIC_NOTIFY_ID_DP_CONNECT:
-		secdp_logger_set_max_count(300);
-		DP_INFO("PDIC_NOTIFY_ID_DP_CONNECT<%d>\n", noti.sub1);
+		DP_INFO("PDIC_NOTIFY_ID_DP_CONNECT <%d>\n", noti.sub1);
 
 		if (noti.sub1 == PDIC_NOTIFY_ATTACH) {
 			secdp_pdic_handle_connect(dp, &noti);
@@ -3440,7 +3441,7 @@ static int secdp_pdic_noti_cb(struct notifier_block *nb, unsigned long action,
 		break;
 
 	case PDIC_NOTIFY_ID_DP_LINK_CONF:
-		DP_INFO("PDIC_NOTIFY_ID_DP_LINK_CONF<%c>\n",
+		DP_INFO("PDIC_NOTIFY_ID_DP_LINK_CONF <%c>\n",
 			noti.sub1 + 'A' - 1);
 		if (!secdp_get_cable_status()) {
 			DP_INFO("cable is out\n");
@@ -3450,9 +3451,7 @@ static int secdp_pdic_noti_cb(struct notifier_block *nb, unsigned long action,
 		break;
 
 	case PDIC_NOTIFY_ID_DP_HPD:
-		if (!secdp_is_hpd_irq(&noti))
-			secdp_logger_set_max_count(300);
-		DP_INFO("PDIC_NOTIFY_ID_DP_HPD sub1<%s>,sub2<%s>\n",
+		DP_INFO("PDIC_NOTIFY_ID_DP_HPD sub1 <%s> sub2 <%s>\n",
 			(noti.sub1 == PDIC_NOTIFY_HIGH) ? "high" :
 				((noti.sub1 == PDIC_NOTIFY_LOW) ? "low" : "??"),
 			(noti.sub2 == PDIC_NOTIFY_IRQ) ? "irq" : "??");
@@ -3468,7 +3467,7 @@ static int secdp_pdic_noti_cb(struct notifier_block *nb, unsigned long action,
 		break;
 	}
 
-	DP_DEBUG("link_conf:%d,hpd:%d\n", sec->link_conf, secdp_get_hpd_status());
+	DP_DEBUG("link_conf:%d, hpd:%d\n", sec->link_conf, secdp_get_hpd_status());
 	if ((sec->link_conf && secdp_get_hpd_status()) ||/*hpd high or hpd_irq*/
 			secdp_is_hpd_low(&noti) ||
 			secdp_is_disconnect(&noti)) {
@@ -3512,13 +3511,13 @@ static int secdp_pdic_noti_cb(struct notifier_block *nb, unsigned long action,
 					complete_all(&dp->notification_comp);
 					msleep(100);
 				} else {
-					DP_INFO("detach complete!\n");
+					DP_DEBUG("detach complete!\n");
 				}
 
 				atomic_set(&sec->noti_status, 0);
 			}
 			sec->dp_disconnecting = false;
-			DP_INFO("DP disconnection complete\n");
+			DP_INFO("dp_disconnecting complete\n");
 			complete(&sec->dp_discon_comp);
 		}
 	}
@@ -3561,7 +3560,7 @@ int secdp_wait_for_disconnect_complete(void)
 		goto end;
 	}
 
-	DP_DEBUG("DP disconnect complete!\n");
+	DP_INFO("DP disconnect complete!\n");
 end:
 	return ret;
 }
@@ -3584,7 +3583,7 @@ int secdp_pdic_reset_cb(bool reset)
 		goto end;
 	}
 
-	DP_INFO("pdic_reset_cb %d\n", reset);
+	DP_INFO("+++ %d\n", reset);
 	sec = &dp->sec;
 
 	if (secdp_get_cable_status()) {
@@ -3651,11 +3650,11 @@ int secdp_pdic_noti_register_ex(struct secdp_misc *sec, bool retry)
 			secdp_pdic_noti_cb, MANAGER_NOTIFY_PDIC_DP);
 	if (!rc) {
 		pdic_noti->registered = true;
-		DP_INFO("noti register success\n");
+		DP_INFO("success\n");
 		goto exit;
 	}
 
-	DP_ERR("noti register fail, rc:%d\n", rc);
+	DP_ERR("fail, rc:%d\n", rc);
 	if (!retry)
 		goto exit;
 
@@ -3691,6 +3690,7 @@ static void secdp_pdic_noti_register(struct work_struct *work)
 		goto exit;
 	}
 
+	DP_INFO("success\n");
 	pdic_noti->registered = true;
 
 	/* cancel immediately */
@@ -3844,7 +3844,7 @@ static void secdp_link_status_work(struct work_struct *work)
 		}
 	}
 
-	DP_DEBUG("---\n");
+	DP_INFO("---\n");
 	return;
 
 poor_disconnect:
@@ -4943,7 +4943,7 @@ static int dp_display_unprepare(struct dp_display *dp_display, void *panel)
 	complete_all(&dp->notification_comp);
 
 	/* log this as it results from user action of cable dis-connection */
-	DP_INFO("unprepare[OK]\n");
+	DP_INFO("[OK]\n");
 end:
 	dp_panel->deinit(dp_panel, flags);
 	mutex_unlock(&dp->session_lock);
@@ -5014,8 +5014,6 @@ end:
 void secdp_reconnect(void)
 {
 	struct dp_display_private *dp = g_secdp_priv;
-
-	secdp_logger_set_max_count(300);
 
 	if (dp->link->poor_connection) {
 		DP_INFO("poor connection, return!\n");
@@ -5319,8 +5317,22 @@ __visible_for_testing bool secdp_check_resolution(struct dp_display_private *dp,
 	}
 
 	if (prefer->ratio == MON_RATIO_NA) {
-		dex->ignore_prefer_ratio = true;
-		DP_INFO("prefer timing is absent, ignore!\n");
+		DP_INFO("prefer timing is absent!\n");
+
+		if ((mrr_timing->clock || prf_timing->clock) && !dex_timing->clock) {
+			dex->ignore_prefer_ratio = true;
+			DP_INFO("[dex] ignore prefer ratio\n");
+		}
+
+		prefer->ratio = secdp_get_aspect_ratio(mode);
+		if (prefer->ratio != MON_RATIO_NA) {
+			DP_INFO("get prefer ratio from %dx%d@%dhz, %s\n",
+				mode->hdisplay, mode->vdisplay, mode->vrefresh,
+				secdp_aspect_ratio_to_string(prefer->ratio));
+		} else {
+			prefer->ratio = MON_RATIO_16_9;
+			DP_INFO("set default prefer ratio\n");
+		}
 	}
 
 	if (!supported || secdp_exceed_mst_max_pclk(mode)
@@ -5609,7 +5621,7 @@ end:
 	if (!secdp_check_resolution(dp, mode, mode_status == MODE_OK))
 		mode_status = MODE_BAD;
 
-	DP_INFO("%9s@%dhz | %s | max:%7d cur:%7d | vt:%d bpp:%u\n", mode->name,
+	DP_INFO("%s@%dhz | %s | max:%d | cur:%d | vtest:%d | bpp:%u\n", mode->name,
 		drm_mode_vrefresh(mode), mode_status == MODE_BAD ? "NG" : "OK",
 		dp_display->max_pclk_khz, mode->clock, dp_panel->video_test, mode_bpp);
 }
