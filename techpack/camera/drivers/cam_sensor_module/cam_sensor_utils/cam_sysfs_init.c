@@ -4884,3 +4884,4 @@ void cam_sysfs_exit_module(void)
 
 MODULE_DESCRIPTION("CAM_SYSFS");
 MODULE_LICENSE("GPL v2");
+/* dummy */

@@ -358,3 +358,4 @@ void sde_dsc1_2_setup_ops(struct sde_hw_dsc_ops *ops,
 	ops->bind_pingpong_blk = sde_hw_dsc_bind_pingpong_blk;
 }
 
+/* dummy */

@@ -469,3 +469,4 @@ void sde_hw_vdc_destroy(struct sde_hw_vdc *vdc)
 		kfree(vdc);
 	}
 }
+/* dummy */

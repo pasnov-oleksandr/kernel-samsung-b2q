@@ -311,3 +311,4 @@ void cam_debug_trace(unsigned int tag, unsigned int module_id,
 		va_end(args);
 	}
 }
+/* dummy */

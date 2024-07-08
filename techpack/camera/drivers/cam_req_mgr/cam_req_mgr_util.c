@@ -366,3 +366,4 @@ int cam_destroy_session_hdl(int32_t dev_hdl)
 {
 	return cam_destroy_hdl(dev_hdl, HDL_TYPE_SESSION);
 }
+/* dummy */
