@@ -13458,6 +13458,15 @@
 				reg = <0x0 0x9fb00000 0x0 0x1000>;
 				phandle = <0xc2>;
 			};
+
+			secure_display_region {
+				size = <0x00 0x7000000>;
+			};
+
+			// cdsp_region {
+			// 	alignment = <0x0 0x10000>;
+			// 	size = <0x00 0x133333>;
+			// };
 		};
 	};
 
