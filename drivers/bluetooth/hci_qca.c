@@ -869,8 +869,11 @@ static int qca_recv_acl_data(struct hci_dev *hdev, struct sk_buff *skb)
 	 * as a diagnostic packet.
 	 */
 	if (get_unaligned_le16(skb->data) == QCA_DEBUG_HANDLE)
+#ifdef CONFIG_BT_QCA_DEBUG
 		return hci_recv_diag(hdev, skb);
-
+#else
+		return 0;
+#endif
 	return hci_recv_frame(hdev, skb);
 }
 
