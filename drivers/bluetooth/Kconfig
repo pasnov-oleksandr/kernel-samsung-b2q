@@ -19,6 +19,11 @@ config BT_QCA
 	tristate
 	select FW_LOADER
 
+config BT_QCA_DEBUG
+	bool "Enable QCA debug"
+	depends on BT_QCA
+	default n
+
 config BT_HCIBTUSB
 	tristate "HCI USB driver"
 	depends on USB
