@@ -154,6 +154,7 @@ static int __init selinux_enabled_setup(char *str)
 #else
 		selinux_enabled = enabled ? 1 : 0;
 #endif
+	}
 // ] SEC_SELINUX_PORTING_COMMON
 	return 1;
 }
@@ -2798,7 +2799,7 @@ static int selinux_sb_kern_mount(struct super_block *sb)
 	if((strcmp(sb->s_type->name,"sdcardfs")) == 0)
 		mutex_unlock(&selinux_sdcardfs_lock);
 	// ] SEC_SELINUX_PORTING_COMMON
-	
+
 	return rc;
 }
 
@@ -7249,7 +7250,7 @@ static __init int selinux_init(void)
 	selinux_enforcing_boot = 1;
 #endif
 // ] SEC_SELINUX_PORTING_COMMON
-	
+
 	if (selinux_enforcing_boot)
 		pr_debug("SELinux:  Starting in enforcing mode\n");
 	else
